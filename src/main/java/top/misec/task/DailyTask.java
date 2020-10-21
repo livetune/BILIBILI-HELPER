@@ -35,7 +35,8 @@ public class DailyTask {
         if (result.get(statusCodeStr).getAsInt() == 0) {
             logger.info("视频: av" + aid + "分享成功");
         } else {
-            logger.debug("视频分享失败，原因: " + result);
+            logger.debug("视频分享失败，原因: " + result.get("message").getAsString());
+            logger.debug("开发者提示: 如果是csrf校验失败请检查BILI_JCT参数是否正确或者失效");
         }
 
     }
@@ -216,7 +217,7 @@ public class DailyTask {
         while (needCoins > 0 && needCoins <= maxNumberOfCoins) {
             String aid = regionRanking();
             addCoinOperateCount++;
-            logger.debug("正在为av" + aid + "投币");
+            logger.info("正在为av" + aid + "投币");
             boolean flag = coinAdd(aid, 1, Config.getInstance().getSelectLike());
             if (flag) {
                 needCoins--;
@@ -225,7 +226,7 @@ public class DailyTask {
                 break;
             }
         }
-        logger.debug("投币任务完成后余额为: " + OftenAPI.getCoinBalance());
+        logger.info("投币任务完成后余额为: " + OftenAPI.getCoinBalance());
     }
 
     public void silver2coin() {
@@ -348,7 +349,7 @@ public class DailyTask {
             int resultCode = jsonObject.get("code").getAsInt();
             if (resultCode == 0) {
                 JsonObject dataJson = jsonObject.get("data").getAsJsonObject();
-                logger.debug(dataJson);
+                //logger.debug(dataJson);
                 int statusCode = dataJson.get("status").getAsInt();
                 if (statusCode == 4) {
                     logger.info("月底了，给自己充电成功啦，送的B币券没有浪费哦");
@@ -364,7 +365,7 @@ public class DailyTask {
                 logger.debug("充电失败了啊 原因: " + jsonObject);
             }
         } else {
-            logger.debug("今天是本月的第: " + day + "天，还没到给自己充电日子呢");
+            logger.info("今天是本月的第: " + day + "天，还没到给自己充电日子呢");
         }
     }
 
@@ -374,7 +375,7 @@ public class DailyTask {
                 + "&message=" + "BILIBILI-HELPER自动充电"
                 + "&csrf=" + Verify.getInstance().getBiliJct();
         JsonObject jsonObject = HttpUnit.doPost(ApiList.chargeComment, requestBody);
-        logger.debug(jsonObject);
+        //logger.debug(jsonObject);
 
     }
 
@@ -410,16 +411,35 @@ public class DailyTask {
         }
     }
 
+    /**
+     * 直播签到
+     */
+    public void liveCheckin() {
+        JsonObject liveCheckinResponse = HttpUnit.doGet("https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign");
+        logger.info("开始直播签到");
+        int code = liveCheckinResponse.get("code").getAsInt();
+        if (code == 0) {
+            JsonObject data = liveCheckinResponse.get("data").getAsJsonObject();
+            logger.info("直播签到成功!! 获得" + data.get("text").getAsString() + "," + data.get("specialText").getAsString());
+        } else {
+            String message = liveCheckinResponse.get("message").getAsString();
+            logger.info(message);
+        }
+    }
+
     public void doDailyTask() {
 
         JsonObject userJson = HttpUnit.doGet(ApiList.LOGIN);
 
         //判断Cookies是否有效
-        if (userJson.get(statusCodeStr).getAsInt() == 0) {
+        if (userJson.get(statusCodeStr).getAsInt() == 0
+                && userJson.get("data").getAsJsonObject().get("isLogin").getAsBoolean()) {
             userInfo = new Gson().fromJson(userJson
                     .getAsJsonObject("data"), Data.class);
+
+            logger.info("登录成功");
         } else {
-            logger.debug(userJson.get("message").getAsString());
+            logger.debug(userJson);
             logger.warn("Cookies可能失效了,请仔细检查Github Secrets中DEDEUSERID SESSDATA BILI_JCT三项的值是否正确");
         }
 
@@ -427,7 +447,6 @@ public class DailyTask {
         //用户名模糊处理 @happy88888
         int s1 = uname.length() / 2, s2 = (s1 + 1) / 2;
         logger.info("用户名称: " + uname.substring(0, s2) + String.join("", Collections.nCopies(s1, "*")) + uname.substring(s1 + s2));
-        logger.info("登录成功 经验+5");
         logger.info("硬币余额: " + userInfo.getMoney());
         logger.info("距离升级到Lv" + (userInfo.getLevel_info().getCurrent_level() + 1) + "还有: " +
                 (userInfo.getLevel_info().getNext_exp() - userInfo.getLevel_info().getCurrent_exp()) / 65 + "天");
@@ -437,8 +456,10 @@ public class DailyTask {
         doMangaSign();
         silver2coin();//银瓜子换硬币
         doCoinAdd();//投币任务
+        liveCheckin(); //直播签到
         doCharge();
         mangaGetVipReward(1);
+        logger.info("本日任务已全部执行完毕");
     }
 }
 

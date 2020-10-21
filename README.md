@@ -22,9 +22,9 @@ BILIBILI-HELPER
 **仓库地址:[JunzhouLiu/BILIBILI-HELPER](https://github.com/JunzhouLiu/BILIBILI-HELPER)**
 
 ## 功能列表
-* [x] 每天上午8点30自动开始任务。
+* [x] 每天上午8点10分自动开始任务。*【运行时间可自定义】*
 * [x] 哔哩哔哩漫画每日自动签到 。
-* [x] 每日自动从热门视频中随机观看1个视频，并分享 10经验 
+* [x] 每日自动从热门视频中随机观看1个视频，分享一个视频。
 * [x] 每日从热门视频中选取5个进行智能投币 *【如果投币不能获得经验，默认不投币】*
 * [x] 投币支持下次一定啦，可自定义每日投币数量。*【如果检测到你已经投过币了，则不会投币】*
 * [x] 大会员月底使用快到期的B币券，给自己充电，一点也不会浪费哦，默认开启。*【可配置】*
@@ -43,7 +43,7 @@ BILIBILI-HELPER
   - [一、Actions定时任务（推荐）](#一actions定时任务推荐)
     - [配置自定义功能](#配置自定义功能)
     - [查看运行日志](#查看运行日志)
-  - [二、使用Luinx crontab方式](#二使用luinx-crontab方式)
+  - [二、使用Linux Crontab方式](#二使用linux-crontab方式)
     - [步骤](#步骤)
     - [运行效果](#运行效果)
   - [三、使用Windows10](#三使用windows10)
@@ -52,13 +52,14 @@ BILIBILI-HELPER
   - [关于项目更新频率](#关于项目更新频率)
   - [使用Github Actions 自动同步源仓库代码](#使用github-actions-自动同步源仓库代码)
   - [手动拉取最新代码](#手动拉取最新代码)
-- [其他使用方式](#其他使用方式)
+- [常见问题](#常见问题)
+  - [关于Action定时任务不执行的问题](#关于action定时任务不执行的问题)
 - [API参考列表](#api参考列表)
 
 
 # 使用说明
 ## 一、Actions定时任务（推荐）
-1. **fork本项目，功能正在逐步增加中，要是能顺手点个Star就更好了**
+1. **fork本项目**
 2. **获取Bilibili Cookies**
 - 浏览器打开并登录[bilibili网站](https://www.bilibili.com/)
 - 按F12打开 “开发者工具” 找到应用程序/Application -> 存储-> Cookies
@@ -68,24 +69,42 @@ BILIBILI-HELPER
 
 3. **点击项目 Seeting->Secrets->New Secrets 添加以下3个Secrets。** 
    
-| Name       | Value              |
-| ---------- | ------------------ |
-| BILI_JCT   | 从Cookie中获取 |
+| Name       | Value          |
+| ---------- | -------------- |
 | DEDEUSERID | 从Cookie中获取 |
 | SESSDATA   | 从Cookie中获取 |
+| BILI_JCT   | 从Cookie中获取 |
 
 ![图示](docs/IMG/20201013210000.png)
 
-4. **手动开GitHub Action服务**
+4. **开启Actions并触发每日自动执行**
    
-Github Actions默认处于禁止状态，请手动开启Actions. 之后每天8点30会运行一次。
+**Github Actions默认处于关闭状态，还大家请手动开启Actions，执行一次工作流，验证是否可以正常工作。**
 
-![图示](docs/IMG/openActions.png)
+![图示](docs/IMG/workflow_dispatch.png)
 
-本工具的Actions自动构建配置了缓存，平均运行时间在`20s`左右。~~`Github Actions`每月的免费额度有2000分钟。所以本工具执行一个月（30次）的定时任务，大约会使用12分钟左右的免费额度，不到`0.6%`大家可以放心使用。公开仓库的Actions不计时 嘤嘤嘤~~
+**Fork仓库后，GitHub默认不自动执行Actions任务，请修改`./github/trigger.json`文件,将`trigger`的值改为`1`，这样每天就会自动执行定时任务了。**
+
+```patch
+{
+- "trigger": 0
++ "trigger": 1
+}
+```
+
+如果需要修改每日任务执行的时间，请修改`.github/workflows/auto_task_bilili.yml`，在第12行左右位置找到下如下配置。
+
+```yml
+  schedule:
+    - cron: '30 10 * * *'
+    # cron表达式，Actions时区是UTC时间，所以下午18点要往前推8个小时。
+    # 示例： 每天晚上22点30执行 '30 14 * * *'
+```
+
+
+本工具的Actions自动构建配置了缓存，平均运行时间在`20s`左右。
 
 *如果收到了GitHub Action的错误邮件，请检查Cookies是不是失效了，用户主动清除浏览器缓存，会导致`BILI_JCT`和`DEDEUSERID`失效*
-
 
 ### 配置自定义功能
 
@@ -107,13 +126,15 @@ Github Actions默认处于禁止状态，请手动开启Actions. 之后每天8�
 
 *展开`Build With Maven`通过`DEBUG`标签快速过滤日志，查看运行状态*  
 
+[Actions运行日志详细查看教程](https://github.com/JunzhouLiu/BILIBILI-HELPER/issues/21)
+
 [日志示例](https://github.com/JunzhouLiu/BILIBILI-HELPER/runs/1256484004?check_suite_focus=true#step:4:5069)
 
 ![图示](docs/IMG/debug1.png)
 ![图示](docs/IMG/debug2.png)
 
 
-## 二、使用Luinx crontab方式
+## 二、使用Linux Crontab方式
 
 ### 步骤
 点击[BILIBILI-HELPER/release](https://github.com/JunzhouLiu/BILIBILI-HELPER/releases)，下载已发布的版本，上传至Liunx服务器。
@@ -131,7 +152,7 @@ root@iZuf642f8w148fwdcpq169Z:~# crontab -l
 # m h  dom mon dow   command
 0 0 1,15 * * /home/./acme.sh-master/acme.sh --renew-all >>/var/log/cron.log 2>&1 &
 0 0 1,15 * * nginx -s reload >>/var/log/cron.log 2>&1 &
-java -jar /home/BILIBILI-HELP.jar userId sessData biliJct 
+30 10 * * * java -jar /home/BILIBILI-HELP.jar DEDEUSERID SESSDATA BILI_JCT >>/var/log/cron.log 2>&1 &
 ```
 
 ### 运行效果  
@@ -140,9 +161,9 @@ java -jar /home/BILIBILI-HELP.jar userId sessData biliJct
 
 ## 三、使用Windows10
 ### 步骤
-1. 点击[BILIBILI-HELPER/release](https://github.com/JunzhouLiu/BILIBILI-HELPER/releases)，下载已发布的版本。在Jar包目录打开`Powershell` 需要装有Java运行环境
+1. 点击[BILIBILI-HELPER/release](https://github.com/JunzhouLiu/BILIBILI-HELPER/releases)，下载已发布的版本。解压，在解压后的目录打开`Powershell` 需要装有Java运行环境。
    
-2. 执行`java -jar /home/BILIBILI-HELP.jar userId sessData biliJct `
+2. 执行`java -jar /home/BILIBILI-HELP.jar DEDEUSERID SESSDATA BILI_JCT `
 
 ![图示](docs/IMG/powershell.png)
 
@@ -238,8 +259,18 @@ git push origin main
 ```
 5. 这样你就能快速的从我的仓库拉取最新的代码，并更新到你自己的仓库里了。自定义配置的同学，要注意`config.json` 不要被我的文件覆盖了。 
 
-# 其他使用方式
-也可以打成`jar`包部署到个人的服务器上，使用crontab执行定时任务，注意：`args`参数顺序为`userId`, `sessData`, `biliJct`。
+# 常见问题
+
+## 关于Action定时任务不执行的问题
+
+**Fork仓库后，GitHub默认不自动执行Actions任务，请修改`./github/trigger.json`文件,将`trigger`的值改为`1`，这样每天就会自动执行定时任务了。**
+
+```patch
+{
+- "trigger": 0
++ "trigger": 1
+}
+```
 
 # API参考列表
 
